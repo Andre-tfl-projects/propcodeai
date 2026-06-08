@@ -234,6 +234,143 @@ function calcPipe() {
   resEl.scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
 
+// ── Natural Gas Pipe Sizing ───────────────────────────────────
+// Based on NFPA 54 / IFGC Table 402.4 — Schedule 40 steel sizing tables
+// Capacity values (BTU/hr) at 0.5" W.C. pressure drop, SG 0.60
+// Adjusted for run length, pressure, and specific gravity
+
+const NG_TABLES = {
+  steel: {
+    name: 'Schedule 40 Steel',
+    code: 'NFPA 54 Table 6.2(a) / IFGC Table 402.4(1)',
+    // [pipe nom size, inside dia, BTU/hr at 10ft, 20ft, 30ft, 50ft, 75ft, 100ft, 150ft, 200ft]
+    sizes: [
+      { nom:'1/2"',  id:0.622, caps:[132000, 92000, 73000, 56000, 45000, 38000, 30000, 26000] },
+      { nom:'3/4"',  id:0.824, caps:[278000, 190000, 152000, 116000, 93000, 79000, 63000, 54000] },
+      { nom:'1"',    id:1.049, caps:[520000, 360000, 285000, 218000, 175000, 149000, 118000, 102000] },
+      { nom:'1-1/4"',id:1.380, caps:[1050000, 730000, 580000, 440000, 355000, 300000, 240000, 205000] },
+      { nom:'1-1/2"',id:1.610, caps:[1600000, 1100000, 880000, 670000, 540000, 460000, 365000, 315000] },
+      { nom:'2"',    id:2.067, caps:[3050000, 2100000, 1680000, 1280000, 1030000, 870000, 695000, 600000] },
+    ]
+  },
+  csst: {
+    name: 'CSST',
+    code: 'NFPA 54 / Manufacturer sizing tables — verify with manufacturer',
+    sizes: [
+      { nom:'3/8"',  id:0.375, caps:[55000,  38000,  30000,  23000,  18000,  15000,  12000,  10000] },
+      { nom:'1/2"',  id:0.500, caps:[120000, 83000,  66000,  50000,  40000,  34000,  27000,  23000] },
+      { nom:'3/4"',  id:0.750, caps:[260000, 180000, 143000, 109000, 88000,  74000,  59000,  51000] },
+      { nom:'1"',    id:1.000, caps:[490000, 340000, 270000, 205000, 165000, 140000, 111000, 96000] },
+      { nom:'1-1/4"',id:1.250, caps:[870000, 600000, 478000, 364000, 293000, 248000, 197000, 170000] },
+    ]
+  },
+  copper: {
+    name: 'Copper Type L',
+    code: 'NFPA 54 Table 6.3 / IFGC Table 402.4(3)',
+    sizes: [
+      { nom:'3/8"',  id:0.430, caps:[32000,  22000,  18000,  13000,  11000,  9000,   7000,   6000] },
+      { nom:'1/2"',  id:0.545, caps:[73000,  50000,  40000,  31000,  25000,  21000,  17000,  14000] },
+      { nom:'3/4"',  id:0.785, caps:[175000, 121000, 96000,  73000,  59000,  50000,  40000,  34000] },
+      { nom:'1"',    id:1.025, caps:[350000, 241000, 192000, 146000, 117000, 100000, 79000,  68000] },
+      { nom:'1-1/4"',id:1.265, caps:[630000, 435000, 346000, 263000, 212000, 180000, 143000, 123000] },
+    ]
+  }
+};
+
+// Run length buckets matching table columns
+const NG_RUN_BUCKETS = [10, 20, 30, 50, 75, 100, 150, 200];
+
+function getNGCapacity(sizes, runFt) {
+  // Find the two closest run buckets and interpolate
+  let idx = NG_RUN_BUCKETS.length - 1;
+  for (let i = 0; i < NG_RUN_BUCKETS.length; i++) {
+    if (runFt <= NG_RUN_BUCKETS[i]) { idx = i; break; }
+  }
+  return sizes.caps[idx];
+}
+
+function calcNGPipe() {
+  const mat      = document.getElementById('ng-mat').value;
+  const pressure = document.getElementById('ng-pressure').value;
+  const sg       = parseFloat(document.getElementById('ng-sg').value);
+  const btu      = parseFloat(document.getElementById('ng-btu').value);
+  const runFt    = parseFloat(document.getElementById('ng-run').value);
+  const drop     = document.getElementById('ng-drop').value;
+
+  const errEl = document.getElementById('ng-err');
+  const resEl = document.getElementById('ng-res');
+  errEl.classList.add('hidden'); resEl.classList.add('hidden');
+
+  if (!btu || btu <= 0)   { errEl.textContent = 'Please enter a BTU/hr load.'; errEl.classList.remove('hidden'); return; }
+  if (!runFt || runFt <= 0) { errEl.textContent = 'Please enter a run length.';  errEl.classList.remove('hidden'); return; }
+
+  const tbl = NG_TABLES[mat];
+
+  // SG correction factor — tables based on SG 0.60
+  // Capacity decreases as SG increases: factor = sqrt(0.60 / sg)
+  const sgFactor = Math.sqrt(0.60 / sg);
+
+  // Pressure drop correction — tables based on 0.5" W.C.
+  // Capacity increases with higher allowed drop: factor = sqrt(drop / 0.5)
+  const dropVal = drop === '0.5' ? 0.5 : drop === '1.0' ? 1.0 : 3.0;
+  const dropFactor = Math.sqrt(dropVal / 0.5);
+
+  // Medium/high pressure multiplier (higher system pressure = more capacity)
+  const pressureFactor = pressure === 'low' ? 1.0 : pressure === 'med' ? 1.35 : 1.65;
+
+  // Combined correction
+  const corrFactor = sgFactor * dropFactor * pressureFactor;
+
+  // Find minimum pipe size — apply correction to table capacity
+  const minRow = tbl.sizes.find(s => {
+    const cap = getNGCapacity(s, runFt) * corrFactor;
+    return cap >= btu;
+  });
+
+  const recRow = tbl.sizes.find(s => {
+    const cap = getNGCapacity(s, runFt) * corrFactor;
+    return cap >= btu * 1.25; // 25% safety margin
+  });
+
+  if (!minRow) {
+    errEl.textContent = `Load of ${btu.toLocaleString()} BTU/hr over ${runFt} ft exceeds ${tbl.name} table capacity. Consider upsizing to a larger distribution system or consult a licensed engineer.`;
+    errEl.classList.remove('hidden'); return;
+  }
+
+  const minCap = Math.round(getNGCapacity(minRow, runFt) * corrFactor);
+  const recCap = recRow ? Math.round(getNGCapacity(recRow, runFt) * corrFactor) : minCap;
+
+  // Approx velocity
+  const btuPerCf = 1020;
+  const area = Math.PI * Math.pow(minRow.id / 2, 2) / 144;
+  const vel  = Math.round((btu / btuPerCf / 3600) / area);
+
+  const pressureLabel = pressure === 'low' ? 'Low (7" W.C.)' : pressure === 'med' ? 'Medium (2 PSI)' : 'High (5 PSI)';
+  const dropLabel     = drop === '0.5' ? '0.5" W.C.' : drop === '1.0' ? '1.0" W.C.' : '3.0" W.C.';
+
+  let note = `${runFt} ft run · SG ${sg} correction ${sgFactor.toFixed(3)} · drop correction ${dropFactor.toFixed(3)} · pressure factor ${pressureFactor.toFixed(2)}. `;
+  note += 'Verify with your locally adopted edition of NFPA 54 / IFGC and AHJ. ';
+  if (mat === 'csst') note += ' CSST sizing must be verified against manufacturer tables — values vary by brand.';
+
+  resEl.innerHTML = `<div class="result-box">
+    <div class="result-hero">
+      <span class="result-num">${(recRow || minRow).nom}</span>
+      <span class="result-lbl">${tbl.name}</span>
+    </div>
+    <div class="result-row"><span class="rk">Recommended (w/ 25% margin)</span><span class="rv">${(recRow || minRow).nom}</span></div>
+    <div class="result-row"><span class="rk">Minimum acceptable</span><span class="rv">${minRow.nom}</span></div>
+    <div class="result-row"><span class="rk">Capacity at this run</span><span class="rv">${minCap.toLocaleString()} BTU/hr</span></div>
+    <div class="result-row"><span class="rk">System pressure</span><span class="rv">${pressureLabel}</span></div>
+    <div class="result-row"><span class="rk">Allowable drop used</span><span class="rv">${dropLabel}</span></div>
+    <div class="result-row"><span class="rk">Specific gravity</span><span class="rv">${sg}</span></div>
+    <div class="result-row"><span class="rk">Approx gas velocity</span><span class="rv">${vel} ft/s${vel > 50 ? ' ⚠️ High' : ''}</span></div>
+    <div class="result-row"><span class="rk">Code reference</span><span class="rv">${tbl.code}</span></div>
+    <div class="result-note">${note}</div>
+  </div>`;
+  resEl.classList.remove('hidden');
+  resEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
 // ── Tank Sizing ───────────────────────────────────────────────
 //
 // Vaporization rates from NFPA 58 Table 5.2
