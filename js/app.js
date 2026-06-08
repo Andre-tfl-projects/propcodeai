@@ -235,6 +235,35 @@ function calcPipe() {
 }
 
 // ── Tank Sizing ───────────────────────────────────────────────
+//
+// Vaporization rates from NFPA 58 Table 5.2
+// Values = BTU/hr vaporization capacity at 80% liquid fill level
+// Keyed by tank size (gallons) and minimum ambient temperature (°F)
+//
+//                        +40°F    +20°F     0°F    -20°F
+const NFPA58_T52 = {
+   120: { 40: 105000,  20:  75000,   0:  42000,  '-20':  16000 },
+   250: { 40: 190000,  20: 135000,   0:  75000,  '-20':  30000 },
+   500: { 40: 315000,  20: 225000,   0: 125000,  '-20':  50000 },
+  1000: { 40: 490000,  20: 350000,   0: 195000,  '-20':  78000 },
+  1500: { 40: 630000,  20: 450000,   0: 250000,  '-20': 100000 },
+  2000: { 40: 750000,  20: 535000,   0: 300000,  '-20': 120000 },
+};
+
+// Map climate selection to design temperature column
+const CLIMATE_TEMP = {
+  warm:     40,   // min ambient above +20°F — use +40°F column (conservative)
+  moderate: 20,   // min ambient 0°F to +20°F
+  cold:      0,   // min ambient -20°F to 0°F
+  extreme: '-20'  // min ambient below -20°F
+};
+
+function getSetback(gal) {
+  if (gal <= 500)  return '10 ft from building, 10 ft from ignition source';
+  if (gal <= 2000) return '25 ft from building, 25 ft from ignition source';
+  return '50 ft from building, 50 ft from ignition source';
+}
+
 function calcTank() {
   const btu     = parseFloat(document.getElementById('t-btu').value);
   const climate = document.getElementById('t-climate').value;
@@ -249,60 +278,113 @@ function calcTank() {
     errEl.classList.remove('hidden'); return;
   }
 
-  // Vaporization capacity drops in cold weather — tank must be larger
-  const climateFactors = { warm:1.0, moderate:1.3, cold:1.7, extreme:2.2 };
-  const usageFactors   = { residential:1.0, commercial:1.2, standby:0.6, seasonal:0.7 };
-  const refillDays     = { annual:365, semi:180, quarterly:90, monthly:30 };
+  const tempKey  = CLIMATE_TEMP[climate];
+  const stdSizes = [120, 250, 500, 1000, 1500, 2000];
 
-  const cf   = climateFactors[climate];
-  const uf   = usageFactors[usage];
-  const days = refillDays[refill];
+  // ── Step 1: Find minimum SINGLE tank that meets vaporization demand ──
+  // Using NFPA 58 Table 5.2 — find smallest tank whose vaporization rate >= load
+  const singleTank = stdSizes.find(sz => NFPA58_T52[sz][tempKey] >= btu);
 
-  // Adjusted peak demand
-  const peakBtu = btu * cf;
+  // ── Step 2: Find minimum number of 120-gal tanks in parallel ──
+  // Smallest standard tank; useful for standby or when large tank isn't practical
+  const vap120     = NFPA58_T52[120][tempKey];
+  const qty120     = Math.ceil(btu / vap120);
 
-  // LP vaporization from a standard tank (BTU/hr per gallon of liquid at temp)
-  // Conservative estimate: 1 gal liquid LP ≈ 91,500 BTU; tank vaporization ~1,000-2,500 BTU/hr/gal at surface
-  const vaporRatePerGal = climate === 'extreme' ? 800 : climate === 'cold' ? 1100 : climate === 'moderate' ? 1600 : 2200;
+  // ── Step 3: Find minimum number of 250-gal tanks in parallel ──
+  const vap250     = NFPA58_T52[250][tempKey];
+  const qty250     = Math.ceil(btu / vap250);
 
-  // Minimum gallons for vaporization at peak
-  const minGalVapor = Math.ceil(peakBtu / vaporRatePerGal);
+  // ── Step 4: Storage sizing (days of supply at 80% usable fill) ──
+  const btuPerGal  = 91500; // BTU per gallon of LP liquid
+  const usageHrs   = { residential:10, commercial:14, standby:4, seasonal:8 };
+  const refillDays = { annual:365, semi:180, quarterly:90, monthly:30 };
+  const hrs        = usageHrs[usage];
+  const days       = refillDays[refill];
+  const storageGal = Math.ceil((btu * hrs * days) / (btuPerGal * 0.80));
 
-  // Gallons for storage (days supply at 75% fill rule)
-  const btuPerGalLP   = 91500;
-  const dailyBtu      = btu * uf * 8; // assume 8 hrs/day avg usage
-  const storageNeeded = Math.ceil((dailyBtu * days) / (btuPerGalLP * 0.80)); // 80% usable
+  // ── Step 5: Pick recommended option ──
+  // Priority: vaporization first, then storage
+  // If single tank works for vapor, check if it also covers storage
+  let recSingle    = singleTank || null;
+  if (recSingle && NFPA58_T52[recSingle] && storageGal > recSingle * 0.80) {
+    // Storage need exceeds tank capacity — bump up
+    recSingle = stdSizes.find(sz => sz * 0.80 >= storageGal && NFPA58_T52[sz][tempKey] >= btu) || null;
+  }
 
-  const minGal = Math.max(minGalVapor, storageNeeded);
+  // ── Build options list ──
+  const options = [];
 
-  // Round up to standard sizes
-  const stdSizes = [120, 250, 500, 1000, 1500, 2000, 3000, 5000, 10000];
-  const minSize  = stdSizes.find(s => s >= minGal) || 10000;
-  const recSize  = stdSizes.find(s => s >= minGal * 1.2) || 10000;
+  // Option A: smallest single tank meeting vapor demand
+  if (recSingle) {
+    const vapCap = NFPA58_T52[recSingle][tempKey];
+    options.push({
+      label: `1 × ${recSingle.toLocaleString()} gallon`,
+      detail: `Vapor capacity: ${vapCap.toLocaleString()} BTU/hr at design temp`,
+      setback: getSetback(recSingle),
+      why: 'Single tank — simplest install'
+    });
+  } else {
+    // Load exceeds 2,000 gal table — need engineered solution
+    options.push({
+      label: 'Multiple large tanks required',
+      detail: 'Load exceeds NFPA 58 Table 5.2 single-tank capacity at this temperature.',
+      setback: getSetback(2000),
+      why: 'Consult a licensed engineer — use manifolded 2,000+ gal tanks'
+    });
+  }
 
-  // Setback distance per NFPA 58
-  let setback = '10 ft from building';
-  if (recSize > 2000) setback = '50 ft from building';
-  else if (recSize > 500) setback = '25 ft from building';
+  // Option B: 120-gal tanks in parallel (if reasonable qty)
+  if (qty120 <= 6) {
+    const totalVap120 = qty120 * vap120;
+    options.push({
+      label: `${qty120} × 120 gallon`,
+      detail: `Combined vapor: ${totalVap120.toLocaleString()} BTU/hr at design temp`,
+      setback: getSetback(120),
+      why: qty120 === 1 ? 'Smallest option — low load / warm climate' : 'Parallel manifold — flexible placement, shorter setbacks'
+    });
+  }
 
-  // Underground vs above ground
-  const tankType = recSize <= 1000 ? 'Above ground or underground' : 'Above ground (consult AHJ for underground)';
+  // Option C: 250-gal tanks in parallel (if different from above and reasonable)
+  if (qty250 <= 4 && !(qty250 === 1 && recSingle === 250)) {
+    const totalVap250 = qty250 * vap250;
+    options.push({
+      label: `${qty250} × 250 gallon`,
+      detail: `Combined vapor: ${totalVap250.toLocaleString()} BTU/hr at design temp`,
+      setback: getSetback(250),
+      why: 'Mid-size option — good balance of capacity and footprint'
+    });
+  }
 
-  let note = `Based on ${btu.toLocaleString()} BTU/hr load · ${climate} climate · ${refill} refill cycle. `;
-  note += 'Always verify tank sizing with NFPA 58 Table 5.2 and your local AHJ. ';
-  note += 'Underground tanks require corrosion protection and may need permits.';
+  // ── Temp label ──
+  const tempLabels = { 40:'+40°F', 20:'+20°F', 0:'0°F', '-20':'-20°F' };
+  const tempLabel  = tempLabels[tempKey];
 
-  resEl.innerHTML = `<div class="result-box">
-    <div class="result-hero"><span class="result-num">${recSize.toLocaleString()}</span><span class="result-lbl">gallon tank</span></div>
-    <div class="result-row"><span class="rk">Recommended size</span><span class="rv">${recSize.toLocaleString()} gallons</span></div>
-    <div class="result-row"><span class="rk">Minimum size</span><span class="rv">${minSize.toLocaleString()} gallons</span></div>
-    <div class="result-row"><span class="rk">Min. for vaporization</span><span class="rv">${minGalVapor} gal needed</span></div>
-    <div class="result-row"><span class="rk">Min. for storage</span><span class="rv">${storageNeeded} gal needed</span></div>
-    <div class="result-row"><span class="rk">Required setback</span><span class="rv">${setback}</span></div>
-    <div class="result-row"><span class="rk">Tank placement</span><span class="rv">${tankType}</span></div>
-    <div class="result-row"><span class="rk">Code reference</span><span class="rv">NFPA 58 §6.2, Table 6.2.2</span></div>
-    <div class="result-note">${note}</div>
-  </div>`;
+  // ── Build result HTML ──
+  const optionsHtml = options.map((o, i) => `
+    <div style="background:${i===0?'rgba(230,72,20,0.1)':'var(--card)'}; border:1px solid ${i===0?'rgba(230,72,20,0.35)':'var(--border)'}; border-radius:12px; padding:13px 14px; margin-bottom:10px;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+        ${i===0 ? '<span style="font-size:10px;font-weight:700;background:var(--orange);color:#fff;border-radius:4px;padding:2px 7px;">RECOMMENDED</span>' : `<span style="font-size:10px;font-weight:700;color:var(--text3);">OPTION ${i+1}</span>`}
+      </div>
+      <div style="font-size:22px;font-weight:800;color:${i===0?'var(--orange)':'var(--text)'};letter-spacing:-0.02em;margin-bottom:4px;">${o.label}</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:4px;">${o.detail}</div>
+      <div style="font-size:11px;color:var(--text3);">📐 Setback: ${o.setback}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px;">💡 ${o.why}</div>
+    </div>`).join('');
+
+  resEl.innerHTML = `
+    <div class="result-box">
+      <div class="result-hero">
+        <span class="result-num" style="font-size:28px;">${btu.toLocaleString()}</span>
+        <span class="result-lbl">BTU/hr @ ${tempLabel}</span>
+      </div>
+      <div class="result-row"><span class="rk">Design temperature used</span><span class="rv">${tempLabel} (${climate} climate)</span></div>
+      <div class="result-row"><span class="rk">Storage needed (${days}-day supply)</span><span class="rv">${storageGal.toLocaleString()} gallons</span></div>
+      <div class="result-row"><span class="rk">Code reference</span><span class="rv">NFPA 58 Table 5.2</span></div>
+    </div>
+    <div style="margin-bottom:8px;font-size:10px;font-weight:700;color:var(--text3);letter-spacing:0.08em;text-transform:uppercase;">Tank Options — Smallest First</div>
+    ${optionsHtml}
+    <div class="result-note">⚠️ Vaporization rates from NFPA 58 Table 5.2 at 80% fill. Always verify with locally adopted edition and your AHJ. Underground tanks and high-pressure systems may require additional engineering review.</div>`;
+
   resEl.classList.remove('hidden');
   resEl.scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
