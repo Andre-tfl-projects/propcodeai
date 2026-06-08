@@ -294,66 +294,111 @@ function calcTank() {
   const vap250     = NFPA58_T52[250][tempKey];
   const qty250     = Math.ceil(btu / vap250);
 
-  // ── Step 4: Storage sizing (days of supply at 80% usable fill) ──
-  const btuPerGal  = 91500; // BTU per gallon of LP liquid
-  const usageHrs   = { residential:10, commercial:14, standby:4, seasonal:8 };
-  const refillDays = { annual:365, semi:180, quarterly:90, monthly:30 };
-  const hrs        = usageHrs[usage];
-  const days       = refillDays[refill];
-  const storageGal = Math.ceil((btu * hrs * days) / (btuPerGal * 0.80));
+  // ── Step 4: Storage — INFORMATIONAL ONLY, never overrides vaporization ──
+  // Shows days of supply the chosen tank provides at average usage
+  const btuPerGal     = 91500; // BTU per liquid gallon of LP
+  const avgLoadFactor = 0.55;  // avg demand ~55% of connected peak
+  const avgHrsPerDay  = { residential:8, commercial:12, standby:2, seasonal:6 };
+  const refillDays    = { annual:365, semi:180, quarterly:90, monthly:30 };
+  const hrs           = avgHrsPerDay[usage];
+  const days          = refillDays[refill];
 
-  // ── Step 5: Pick recommended option ──
-  // Priority: vaporization first, then storage
-  // If single tank works for vapor, check if it also covers storage
-  let recSingle    = singleTank || null;
-  if (recSingle && NFPA58_T52[recSingle] && storageGal > recSingle * 0.80) {
-    // Storage need exceeds tank capacity — bump up
-    recSingle = stdSizes.find(sz => sz * 0.80 >= storageGal && NFPA58_T52[sz][tempKey] >= btu) || null;
-  }
+  // ── Step 5: Recommendation driven PURELY by vaporization (NFPA 58 Table 5.2) ──
+  const recSingle = singleTank || null;
 
   // ── Build options list ──
   const options = [];
 
-  // Option A: smallest single tank meeting vapor demand
-  if (recSingle) {
-    const vapCap = NFPA58_T52[recSingle][tempKey];
-    options.push({
-      label: `1 × ${recSingle.toLocaleString()} gallon`,
-      detail: `Vapor capacity: ${vapCap.toLocaleString()} BTU/hr at design temp`,
-      setback: getSetback(recSingle),
-      why: 'Single tank — simplest install'
-    });
-  } else {
-    // Load exceeds 2,000 gal table — need engineered solution
-    options.push({
+  // Build all valid options, then sort smallest total gallons first
+  const allOptions = [];
+
+  // Single tanks (120, 250, 500, 1000, 1500, 2000)
+  for (const sz of stdSizes) {
+    if (NFPA58_T52[sz][tempKey] >= btu) {
+      allOptions.push({
+        totalGal: sz,
+        qty: 1,
+        tankSize: sz,
+        vapCap: NFPA58_T52[sz][tempKey],
+        label: `1 × ${sz.toLocaleString()} gallon`,
+        detail: `Vapor capacity: ${NFPA58_T52[sz][tempKey].toLocaleString()} BTU/hr at design temp`,
+        setback: getSetback(sz),
+        why: 'Single tank — simplest install'
+      });
+      break; // only need smallest single tank
+    }
+  }
+
+  // Multiple 120-gal tanks (if qty is reasonable and total < next single tank size)
+  if (qty120 >= 1 && qty120 <= 6) {
+    const totalVap120 = qty120 * vap120;
+    const totalGal120 = qty120 * 120;
+    // Only show if it's actually smaller than the single-tank recommendation
+    const singleRec = allOptions[0];
+    if (!singleRec || totalGal120 < singleRec.totalGal) {
+      allOptions.unshift({ // put at front — it's smaller!
+        totalGal: totalGal120,
+        qty: qty120,
+        tankSize: 120,
+        vapCap: totalVap120,
+        label: `${qty120} × 120 gallon${qty120 > 1 ? 's' : ''}`,
+        detail: `Combined vapor: ${totalVap120.toLocaleString()} BTU/hr at design temp`,
+        setback: getSetback(120),
+        why: qty120 === 1 ? 'Smallest standard tank — meets this load' : `${qty120} tanks manifolded — smaller footprint, shorter setbacks than a single large tank`
+      });
+    } else if (totalGal120 !== (singleRec?.totalGal || 0)) {
+      allOptions.push({ // add as alternative
+        totalGal: totalGal120,
+        qty: qty120,
+        tankSize: 120,
+        vapCap: totalVap120,
+        label: `${qty120} × 120 gallon${qty120 > 1 ? 's' : ''}`,
+        detail: `Combined vapor: ${totalVap120.toLocaleString()} BTU/hr at design temp`,
+        setback: getSetback(120),
+        why: qty120 === 1 ? 'Smallest standard tank' : `${qty120} tanks manifolded — shorter setbacks, flexible placement`
+      });
+    }
+  }
+
+  // Multiple 250-gal tanks if different result and reasonable
+  if (qty250 >= 1 && qty250 <= 4) {
+    const totalGal250 = qty250 * 250;
+    const already = allOptions.some(o => o.totalGal === totalGal250);
+    if (!already) {
+      allOptions.push({
+        totalGal: totalGal250,
+        qty: qty250,
+        tankSize: 250,
+        vapCap: qty250 * vap250,
+        label: `${qty250} × 250 gallon${qty250 > 1 ? 's' : ''}`,
+        detail: `Combined vapor: ${(qty250 * vap250).toLocaleString()} BTU/hr at design temp`,
+        setback: getSetback(250),
+        why: qty250 === 1 ? '250-gal single tank' : `${qty250} × 250-gal manifolded`
+      });
+    }
+  }
+
+  // If nothing meets demand (load > all table values)
+  if (allOptions.length === 0) {
+    allOptions.push({
+      totalGal: 9999,
       label: 'Multiple large tanks required',
       detail: 'Load exceeds NFPA 58 Table 5.2 single-tank capacity at this temperature.',
       setback: getSetback(2000),
-      why: 'Consult a licensed engineer — use manifolded 2,000+ gal tanks'
+      why: 'Consult a licensed engineer — manifolded 2,000+ gal tanks required'
     });
   }
 
-  // Option B: 120-gal tanks in parallel (if reasonable qty)
-  if (qty120 <= 6) {
-    const totalVap120 = qty120 * vap120;
-    options.push({
-      label: `${qty120} × 120 gallon`,
-      detail: `Combined vapor: ${totalVap120.toLocaleString()} BTU/hr at design temp`,
-      setback: getSetback(120),
-      why: qty120 === 1 ? 'Smallest option — low load / warm climate' : 'Parallel manifold — flexible placement, shorter setbacks'
-    });
-  }
+  // Sort by total gallons ascending — smallest first = recommended
+  allOptions.sort((a, b) => a.totalGal - b.totalGal);
 
-  // Option C: 250-gal tanks in parallel (if different from above and reasonable)
-  if (qty250 <= 4 && !(qty250 === 1 && recSingle === 250)) {
-    const totalVap250 = qty250 * vap250;
-    options.push({
-      label: `${qty250} × 250 gallon`,
-      detail: `Combined vapor: ${totalVap250.toLocaleString()} BTU/hr at design temp`,
-      setback: getSetback(250),
-      why: 'Mid-size option — good balance of capacity and footprint'
-    });
-  }
+  // Deduplicate
+  const seen = new Set();
+  const options = allOptions.filter(o => {
+    if (seen.has(o.label)) return false;
+    seen.add(o.label);
+    return true;
+  }).slice(0, 4); // max 4 options
 
   // ── Temp label ──
   const tempLabels = { 40:'+40°F', 20:'+20°F', 0:'0°F', '-20':'-20°F' };
@@ -378,8 +423,8 @@ function calcTank() {
         <span class="result-lbl">BTU/hr @ ${tempLabel}</span>
       </div>
       <div class="result-row"><span class="rk">Design temperature used</span><span class="rv">${tempLabel} (${climate} climate)</span></div>
-      <div class="result-row"><span class="rk">Storage needed (${days}-day supply)</span><span class="rv">${storageGal.toLocaleString()} gallons</span></div>
-      <div class="result-row"><span class="rk">Code reference</span><span class="rv">NFPA 58 Table 5.2</span></div>
+      <div class="result-row"><span class="rk">Est. days supply (${recSingle || 120} gal @ ${days}-day cycle)</span><span class="rv">${recSingle ? Math.floor((recSingle * 0.80 * btuPerGal) / (btu * avgLoadFactor * hrs)) : '—'} days</span></div>
+      <div class="result-row"><span class="rk">Sizing basis</span><span class="rv">NFPA 58 Table 5.2 vaporization</span></div>
     </div>
     <div style="margin-bottom:8px;font-size:10px;font-weight:700;color:var(--text3);letter-spacing:0.08em;text-transform:uppercase;">Tank Options — Smallest First</div>
     ${optionsHtml}
