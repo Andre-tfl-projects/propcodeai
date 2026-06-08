@@ -571,6 +571,94 @@
       </div>
     </div>
 
+    <!-- ═══ NG PIPE PANEL ═══ -->
+    <div class="panel" id="panel-ngpipe">
+      <div class="scroll">
+        <div class="sec-head">Natural Gas Pipe Sizing Calculator</div>
+
+        <div class="field">
+          <label>Pipe Material</label>
+          <div class="sel-wrap">
+            <select id="ng-mat">
+              <option value="steel">Schedule 40 Steel</option>
+              <option value="csst">CSST (Corrugated Stainless)</option>
+              <option value="copper">Copper Type L</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>System Pressure</label>
+          <div class="sel-wrap">
+            <select id="ng-pressure">
+              <option value="low">Low Pressure — Less than 2 PSI (7" W.C. typical)</option>
+              <option value="med">Medium Pressure — 2 PSI</option>
+              <option value="high">High Pressure — 5 PSI</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Specific Gravity of Gas</label>
+          <div class="sel-wrap">
+            <select id="ng-sg">
+              <option value="0.60">0.60 — Standard Natural Gas (most utilities)</option>
+              <option value="0.65">0.65 — Higher BTU content gas</option>
+              <option value="0.70">0.70 — High specific gravity</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Total Appliance Load (BTU/hr)</label>
+          <input type="number" id="ng-btu" placeholder="e.g. 200000" inputmode="numeric"/>
+        </div>
+
+        <div class="field">
+          <label>Longest Run Length (feet)</label>
+          <input type="number" id="ng-run" placeholder="e.g. 60" inputmode="numeric"/>
+        </div>
+
+        <div class="field">
+          <label>Allowable Pressure Drop</label>
+          <div class="sel-wrap">
+            <select id="ng-drop">
+              <option value="0.5">0.5" W.C. — Low pressure systems (IFGC default)</option>
+              <option value="1.0">1.0" W.C.</option>
+              <option value="3.0">3.0" W.C. — Medium pressure systems</option>
+            </select>
+          </div>
+        </div>
+
+        <button class="action-btn" onclick="calcNGPipe()">Calculate NG Pipe Size</button>
+
+        <div id="ng-err" class="err-box hidden"></div>
+        <div id="ng-res" class="hidden"></div>
+
+        <div class="ref-card">
+          <div class="ref-head">NG Appliance BTU/hr Reference</div>
+          <div class="ref-row"><span>Furnace (avg)</span><span>80,000</span></div>
+          <div class="ref-ref-row ref-row"><span>Water Heater</span><span>40,000</span></div>
+          <div class="ref-row"><span>Range / Cooktop</span><span>65,000</span></div>
+          <div class="ref-row"><span>Clothes Dryer</span><span>22,000</span></div>
+          <div class="ref-row"><span>Gas Fireplace</span><span>30,000</span></div>
+          <div class="ref-row"><span>10kW Generator</span><span>130,000</span></div>
+          <div class="ref-row"><span>Pool / Spa Heater</span><span>400,000</span></div>
+          <div class="ref-row"><span>Commercial Boiler</span><span>500,000+</span></div>
+        </div>
+
+        <div class="ref-card">
+          <div class="ref-head">NG Pressure Drop Rules (IFGC §402)</div>
+          <div class="ref-row"><span>Low pressure systems</span><span>Max 0.5" W.C. drop</span></div>
+          <div class="ref-row"><span>Medium pressure systems</span><span>Max 10% of inlet</span></div>
+          <div class="ref-row"><span>Typical utility pressure</span><span>7" W.C. at meter</span></div>
+          <div class="ref-row"><span>Appliance inlet required</span><span>Min 4" W.C.</span></div>
+          <div class="ref-row"><span>Code reference</span><span>NFPA 54 / IFGC §402</span></div>
+        </div>
+
+      </div>
+    </div>
+
     <!-- ═══ TANK SIZING PANEL ═══ -->
     <div class="panel" id="panel-tank">
       <div class="scroll">
