@@ -306,9 +306,6 @@ function calcTank() {
   // ── Step 5: Recommendation driven PURELY by vaporization (NFPA 58 Table 5.2) ──
   const recSingle = singleTank || null;
 
-  // ── Build options list ──
-  const options = [];
-
   // Build all valid options, then sort smallest total gallons first
   const allOptions = [];
 
@@ -406,11 +403,11 @@ function calcTank() {
 
   // ── Build result HTML ──
   const optionsHtml = options.map((o, i) => `
-    <div style="background:${i===0?'rgba(230,72,20,0.1)':'var(--card)'}; border:1px solid ${i===0?'rgba(230,72,20,0.35)':'var(--border)'}; border-radius:12px; padding:13px 14px; margin-bottom:10px;">
+    <div style="background:${i===0?'rgba(0,119,200,0.1)':'var(--card)'}; border:1px solid ${i===0?'rgba(0,119,200,0.35)':'var(--border)'}; border-radius:12px; padding:13px 14px; margin-bottom:10px;">
       <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-        ${i===0 ? '<span style="font-size:10px;font-weight:700;background:var(--orange);color:#fff;border-radius:4px;padding:2px 7px;">RECOMMENDED</span>' : `<span style="font-size:10px;font-weight:700;color:var(--text3);">OPTION ${i+1}</span>`}
+        ${i===0 ? '<span style="font-size:10px;font-weight:700;background:#0077C8;color:#fff;border-radius:4px;padding:2px 7px;">RECOMMENDED</span>' : `<span style="font-size:10px;font-weight:700;color:var(--text3);">OPTION ${i+1}</span>`}
       </div>
-      <div style="font-size:22px;font-weight:800;color:${i===0?'var(--orange)':'var(--text)'};letter-spacing:-0.02em;margin-bottom:4px;">${o.label}</div>
+      <div style="font-size:22px;font-weight:800;color:${i===0?'#0077C8':'var(--text)'};letter-spacing:-0.02em;margin-bottom:4px;">${o.label}</div>
       <div style="font-size:12px;color:var(--text2);margin-bottom:4px;">${o.detail}</div>
       <div style="font-size:11px;color:var(--text3);">📐 Setback: ${o.setback}</div>
       <div style="font-size:11px;color:var(--text3);margin-top:2px;">💡 ${o.why}</div>
@@ -419,7 +416,7 @@ function calcTank() {
   resEl.innerHTML = `
     <div class="result-box">
       <div class="result-hero">
-        <span class="result-num" style="font-size:28px;">${btu.toLocaleString()}</span>
+        <span style="font-size:32px;font-weight:800;color:#0077C8;letter-spacing:-0.02em;line-height:1;">${btu.toLocaleString()}</span>
         <span class="result-lbl">BTU/hr @ ${tempLabel}</span>
       </div>
       <div class="result-row"><span class="rk">Design temperature used</span><span class="rv">${tempLabel} (${climate} climate)</span></div>
