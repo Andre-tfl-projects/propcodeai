@@ -1,4 +1,4 @@
-const CACHE = 'propcodeai-v2';
+const CACHE = 'tankfarm-v3';
 const ASSETS = ['/', '/index.html', '/js/app.js', '/manifest.json', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', e => {
