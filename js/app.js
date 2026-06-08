@@ -306,6 +306,9 @@ function calcTank() {
   // ── Step 5: Recommendation driven PURELY by vaporization (NFPA 58 Table 5.2) ──
   const recSingle = singleTank || null;
 
+  // ── Build options list ──
+  const options = [];
+
   // Build all valid options, then sort smallest total gallons first
   const allOptions = [];
 
