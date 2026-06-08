@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <meta name="theme-color" content="#0a1428"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="TankFarm"/>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="apple-touch-icon" href="icons/icon-192.png"/>
+  <title>Tankfarm Tech Guide</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root[data-theme="dark"] {
+      --bg:        #0a1428;
+      --bg2:       #111e35;
+      --bg3:       #1a2d4a;
+      --bg4:       #213557;
+      --orange:    #e64814;
+      --orange2:   #f07248;
+      --gold:      #f5a623;
+      --white:     #ffffff;
+      --text:      #e2eaf5;
+      --text2:     #8aaac8;
+      --text3:     #4a6a88;
+      --border:    rgba(255,255,255,0.07);
+      --border2:   rgba(255,255,255,0.13);
+      --card:      rgba(255,255,255,0.05);
+      --card2:     rgba(255,255,255,0.09);
+      --input-bg:  #162338;
+      --shadow:    0 4px 20px rgba(0,0,0,0.4);
+      --radius:    12px;
+      --radius-lg: 18px;
+    }
+
+    :root[data-theme="light"] {
+      --bg:        #f0f4f8;
+      --bg2:       #ffffff;
+      --bg3:       #e8eef5;
+      --bg4:       #dde5ef;
+      --orange:    #e64814;
+      --orange2:   #c83a0a;
+      --gold:      #d48a00;
+      --white:     #ffffff;
+      --text:      #1a2535;
+      --text2:     #4a6080;
+      --text3:     #8aaac8;
+      --border:    rgba(0,0,0,0.08);
+      --border2:   rgba(0,0,0,0.14);
+      --card:      rgba(0,0,0,0.03);
+      --card2:     rgba(0,0,0,0.06);
+      --input-bg:  #ffffff;
+      --shadow:    0 2px 12px rgba(0,0,0,0.1);
+      --radius:    12px;
+      --radius-lg: 18px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    body {
+      display: flex; flex-direction: column;
+      max-width: 480px; margin: 0 auto;
+      height: 100%; overflow: hidden;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      background: var(--bg);
+      padding: 14px 16px 12px;
+      padding-top: max(14px, env(safe-area-inset-top));
+      display: flex; align-items: center; gap: 12px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .logo {
+      width: 40px; height: 40px;
+      background: linear-gradient(145deg, #e64814, #b03008);
+      border-radius: 11px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 3px 10px rgba(230,72,20,0.4);
+      flex-shrink: 0;
+    }
+
+    .header-text h1 { font-size: 17px; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
+    .header-text p  { font-size: 11px; color: var(--text2); margin-top: 1px; }
+
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+    .theme-btn {
+      width: 34px; height: 34px;
+      background: var(--card2); border: 1px solid var(--border2);
+      border-radius: 10px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s;
+    }
+
+    .offline-pill {
+      font-size: 10px; font-weight: 600;
+      background: rgba(245,166,35,0.15); color: var(--gold);
+      border: 1px solid rgba(245,166,35,0.3);
+      border-radius: 20px; padding: 3px 9px;
+      display: none;
+    }
+    .offline-pill.show { display: block; }
+
+    /* ── NAV ── */
+    .nav {
+      display: flex; background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0; overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .nav::-webkit-scrollbar { display: none; }
+
+    .nav-btn {
+      flex: 1; min-width: 60px;
+      display: flex; flex-direction: column; align-items: center;
+      gap: 3px; padding: 9px 4px 7px;
+      border: none; background: none; cursor: pointer;
+      color: var(--text3);
+      font-size: 9px; font-weight: 600;
+      letter-spacing: 0.05em; text-transform: uppercase;
+      transition: color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      position: relative; white-space: nowrap;
+    }
+
+    .nav-btn svg {
+      width: 21px; height: 21px;
+      stroke: currentColor; fill: none;
+      stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+    }
+
+    .nav-btn.active { color: var(--orange2); }
+    .nav-btn.active::after {
+      content: ''; position: absolute;
+      bottom: 0; left: 15%; right: 15%;
+      height: 2px; background: var(--orange);
+      border-radius: 2px 2px 0 0;
+    }
+
+    /* ── PANELS ── */
+    .panels { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+    .panel  { display: none; flex: 1; flex-direction: column; overflow: hidden; min-height: 0; }
+    .panel.active { display: flex; }
+
+    /* ══ SHARED COMPONENTS ══ */
+    .scroll { flex: 1; overflow-y: auto; padding: 16px 14px; -webkit-overflow-scrolling: touch; }
+
+    .sec-head {
+      font-size: 10px; font-weight: 700; color: var(--text3);
+      letter-spacing: 0.09em; text-transform: uppercase; margin-bottom: 14px;
+    }
+
+    .field { margin-bottom: 13px; }
+    .field label { display: block; font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 5px; }
+    .field input, .field select {
+      width: 100%; background: var(--input-bg);
+      border: 1px solid var(--border2); border-radius: var(--radius);
+      padding: 11px 13px; font-size: 14px; color: var(--text);
+      font-family: inherit; -webkit-appearance: none; appearance: none;
+      transition: border-color 0.15s;
+    }
+    .field input:focus, .field select:focus { outline: none; border-color: var(--orange); }
+    .field input::placeholder { color: var(--text3); }
+
+    .sel-wrap { position: relative; }
+    .sel-wrap::after { content:'▾'; position:absolute; right:13px; top:50%; transform:translateY(-50%); color:var(--text2); pointer-events:none; }
+
+    .action-btn {
+      width: 100%; padding: 13px;
+      background: var(--orange); color: #fff;
+      border: none; border-radius: var(--radius);
+      font-size: 15px; font-weight: 700; cursor: pointer;
+      margin: 4px 0 18px;
+      box-shadow: 0 3px 12px rgba(230,72,20,0.35);
+      letter-spacing: 0.02em;
+      -webkit-tap-highlight-color: transparent;
+      transition: opacity 0.15s;
+    }
+    .action-btn:active { opacity: 0.85; }
+
+    .result-box {
+      background: var(--bg3); border: 1px solid var(--border2);
+      border-radius: var(--radius-lg); padding: 16px; margin-bottom: 16px;
+    }
+
+    .result-hero {
+      display: flex; align-items: baseline; gap: 10px;
+      padding-bottom: 13px; margin-bottom: 13px;
+      border-bottom: 1px solid var(--border);
+    }
+    .result-num { font-size: 40px; font-weight: 800; color: var(--orange); letter-spacing: -0.03em; line-height: 1; }
+    .result-lbl { font-size: 14px; color: var(--text2); }
+
+    .result-row {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      padding: 7px 0; border-bottom: 1px solid var(--border);
+      font-size: 13px; gap: 10px;
+    }
+    .result-row:last-child { border-bottom: none; }
+    .rk { color: var(--text3); flex-shrink: 0; }
+    .rv { color: var(--text); font-weight: 500; text-align: right; }
+
+    .result-note {
+      font-size: 12px; color: var(--text2);
+      background: rgba(245,166,35,0.08);
+      border: 1px solid rgba(245,166,35,0.18);
+      border-radius: var(--radius); padding: 10px 13px;
+      margin-top: 11px; line-height: 1.55;
+    }
+
+    .ref-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 15px; margin-bottom: 14px;
+    }
+    .ref-head { font-size: 10px; font-weight: 700; color: var(--orange2); letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 11px; }
+    .ref-row { display:flex; justify-content:space-between; font-size:13px; padding:6px 0; border-bottom:1px solid var(--border); color:var(--text2); }
+    .ref-row:last-child { border-bottom:none; }
+    .ref-row span:last-child { color:var(--text); font-weight:500; }
+
+    .err-box {
+      background: rgba(230,72,20,0.1); border: 1px solid rgba(230,72,20,0.3);
+      border-radius: var(--radius); padding: 12px 14px;
+      font-size: 13px; color: #f08060; line-height: 1.5; margin-bottom: 14px;
+    }
+
+    .hidden { display: none !important; }
+
+    /* ══ ASK PANEL ══ */
+    .book-bar {
+      background: var(--bg2); display: flex; gap: 7px;
+      padding: 9px 13px; overflow-x: auto; scrollbar-width: none; flex-shrink: 0;
+    }
+    .book-bar::-webkit-scrollbar { display: none; }
+
+    .book-chip {
+      flex-shrink: 0; font-size: 11px; font-weight: 600;
+      padding: 5px 12px; border-radius: 20px; cursor: pointer;
+      border: 1px solid var(--border2); color: var(--text2);
+      background: transparent; transition: all 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .book-chip.on {
+      background: var(--orange); border-color: var(--orange); color: #fff;
+      box-shadow: 0 2px 8px rgba(230,72,20,0.3);
+    }
+
+    .chat { flex:1; overflow-y:auto; padding:14px 13px; display:flex; flex-direction:column; gap:11px; -webkit-overflow-scrolling:touch; min-height:0; }
+
+    .msg { display:flex; flex-direction:column; gap:4px; }
+    .msg.user { align-items:flex-end; }
+    .msg.bot  { align-items:flex-start; }
+
+    .bubble { max-width:88%; padding:11px 14px; font-size:14px; line-height:1.6; border-radius:18px; }
+
+    .msg.user .bubble {
+      background: var(--orange); color:#fff;
+      border-radius:18px 18px 5px 18px;
+      box-shadow: 0 2px 10px rgba(230,72,20,0.25);
+    }
+    .msg.bot .bubble {
+      background: var(--card2); border:1px solid var(--border2);
+      color:var(--text); border-radius:5px 18px 18px 18px;
+    }
+
+    .bot-lbl { font-size:10px; font-weight:700; color:var(--orange2); letter-spacing:0.08em; text-transform:uppercase; padding-left:3px; }
+
+    .code-ref {
+      display:inline-block; font-size:10px; font-weight:700;
+      background:rgba(230,72,20,0.15); color:var(--orange2);
+      border:1px solid rgba(230,72,20,0.28); border-radius:5px;
+      padding:1px 7px; margin:0 2px 2px 0; letter-spacing:0.03em;
+    }
+
+    .dots { display:flex; gap:5px; align-items:center; padding:13px 15px; background:var(--card2); border:1px solid var(--border2); border-radius:5px 18px 18px 18px; align-self:flex-start; }
+    .dots span { width:7px; height:7px; background:var(--text2); border-radius:50%; animation:bounce 1.3s infinite; }
+    .dots span:nth-child(2){animation-delay:.2s} .dots span:nth-child(3){animation-delay:.4s}
+    @keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+
+    .quick-wrap { padding:0 13px 11px; flex-shrink:0; }
+    .quick-lbl { font-size:10px; font-weight:700; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:7px; }
+
+    .quick-btn {
+      width:100%; display:flex; align-items:center; gap:10px;
+      padding:9px 12px; background:var(--card); border:1px solid var(--border);
+      border-radius:var(--radius); color:var(--text2); font-size:13px;
+      cursor:pointer; margin-bottom:6px; text-align:left;
+      -webkit-tap-highlight-color:transparent; transition:background 0.15s;
+    }
+    .quick-btn:active { background:var(--card2); }
+
+    .q-icon {
+      width:28px; height:28px; background:rgba(230,72,20,0.13);
+      border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    }
+    .q-icon svg { width:15px; height:15px; stroke:var(--orange2); fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+
+    .input-bar {
+      padding:10px 13px; padding-bottom:max(12px,env(safe-area-inset-bottom));
+      background:var(--bg2); border-top:1px solid var(--border);
+      display:flex; gap:8px; align-items:flex-end; flex-shrink:0;
+    }
+    .input-bar textarea {
+      flex:1; background:var(--bg3); border:1px solid var(--border2);
+      border-radius:22px; padding:10px 15px; font-size:14px;
+      color:var(--text); font-family:inherit; resize:none;
+      min-height:42px; max-height:96px; line-height:1.45;
+      -webkit-appearance:none; transition:border-color 0.15s;
+    }
+    .input-bar textarea::placeholder { color:var(--text3); }
+    .input-bar textarea:focus { outline:none; border-color:var(--orange); }
+
+    .send-btn {
+      width:42px; height:42px; border-radius:50%;
+      background:var(--orange); border:none; cursor:pointer;
+      display:flex; align-items:center; justify-content:center; flex-shrink:0;
+      box-shadow:0 2px 10px rgba(230,72,20,0.4);
+      transition:opacity 0.15s, transform 0.1s;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .send-btn:active { transform:scale(0.93); }
+    .send-btn:disabled { opacity:0.35; }
+    .send-btn svg { width:18px; height:18px; stroke:#fff; fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; margin-left:2px; }
+
+    /* ══ UNIT CONVERTER ══ */
+    .converter-grid { display:flex; flex-direction:column; gap:14px; }
+
+    .conv-card {
+      background:var(--bg2); border:1px solid var(--border);
+      border-radius:var(--radius-lg); padding:15px; overflow:hidden;
+    }
+    .conv-title { font-size:11px; font-weight:700; color:var(--orange2); letter-spacing:0.07em; text-transform:uppercase; margin-bottom:12px; }
+
+    .conv-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+    .conv-row:last-child { margin-bottom:0; }
+
+    .conv-input {
+      flex:1; background:var(--input-bg); border:1px solid var(--border2);
+      border-radius:10px; padding:9px 12px; font-size:15px; font-weight:600;
+      color:var(--text); font-family:inherit; -webkit-appearance:none;
+      transition:border-color 0.15s;
+    }
+    .conv-input:focus { outline:none; border-color:var(--orange); }
+
+    .conv-lbl { font-size:12px; font-weight:600; color:var(--text2); min-width:70px; }
+    .conv-eq { font-size:11px; color:var(--text3); text-align:center; padding:2px 0; }
+
+    /* ══ NOTES PANEL ══ */
+    .notes-top {
+      padding:11px 13px; background:var(--bg2); border-bottom:1px solid var(--border);
+      display:flex; gap:8px; align-items:center; flex-shrink:0;
+    }
+    .search-box {
+      flex:1; background:var(--bg3); border:1px solid var(--border2);
+      border-radius:22px; padding:9px 14px; font-size:13px;
+      color:var(--text); font-family:inherit; -webkit-appearance:none;
+    }
+    .search-box::placeholder { color:var(--text3); }
+    .search-box:focus { outline:none; border-color:var(--orange); }
+
+    .new-btn {
+      background:var(--orange); color:#fff; border:none; border-radius:22px;
+      padding:9px 15px; font-size:13px; font-weight:700; cursor:pointer;
+      box-shadow:0 2px 8px rgba(230,72,20,0.3); white-space:nowrap;
+      -webkit-tap-highlight-color:transparent;
+    }
+
+    .notes-list { flex:1; overflow-y:auto; padding:11px 13px; -webkit-overflow-scrolling:touch; }
+
+    .note-card {
+      background:var(--card); border:1px solid var(--border);
+      border-radius:var(--radius-lg); padding:13px 15px; margin-bottom:9px;
+      cursor:pointer; transition:background 0.15s;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .note-card:active { background:var(--card2); }
+
+    .note-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:5px; }
+    .note-title { font-size:14px; font-weight:600; color:var(--text); flex:1; margin-right:10px; }
+    .note-date { font-size:11px; color:var(--text3); white-space:nowrap; }
+    .note-preview { font-size:13px; color:var(--text2); line-height:1.45; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+    .note-tag { display:inline-block; margin-top:7px; font-size:10px; font-weight:700; background:rgba(230,72,20,0.14); color:var(--orange2); border:1px solid rgba(230,72,20,0.25); border-radius:5px; padding:2px 7px; }
+
+    .empty { text-align:center; padding:50px 24px; color:var(--text3); font-size:14px; line-height:1.7; }
+    .empty-icon { font-size:40px; margin-bottom:12px; }
+
+    .editor { display:none; flex:1; flex-direction:column; overflow:hidden; }
+    .editor.open { display:flex; }
+
+    .editor-bar {
+      padding:10px 13px; background:var(--bg2); border-bottom:1px solid var(--border);
+      display:flex; gap:8px; align-items:center; flex-shrink:0;
+    }
+    .back-btn {
+      background:var(--card); border:1px solid var(--border2);
+      border-radius:9px; padding:7px 12px; font-size:13px; color:var(--text2); cursor:pointer;
+    }
+    .editor-title {
+      flex:1; background:var(--input-bg); border:1px solid var(--border2);
+      border-radius:var(--radius); padding:8px 12px;
+      font-size:14px; font-weight:600; color:var(--text); font-family:inherit;
+    }
+    .editor-title:focus { outline:none; border-color:var(--orange); }
+
+    .editor-meta {
+      padding:8px 13px; background:var(--bg2); border-bottom:1px solid var(--border);
+      display:flex; gap:7px; align-items:center; flex-shrink:0;
+    }
+    .tag-sel { background:var(--input-bg); border:1px solid var(--border2); border-radius:9px; padding:6px 11px; font-size:12px; color:var(--text2); font-family:inherit; -webkit-appearance:none; }
+    .del-btn { background:transparent; border:1px solid rgba(230,72,20,0.3); border-radius:9px; padding:6px 12px; font-size:12px; color:var(--orange2); cursor:pointer; }
+    .save-btn { margin-left:auto; background:var(--orange); border:none; border-radius:9px; padding:7px 17px; font-size:13px; font-weight:700; color:#fff; cursor:pointer; }
+
+    .editor-body { flex:1; overflow-y:auto; padding:14px 13px; -webkit-overflow-scrolling:touch; }
+    .editor-body textarea { width:100%; min-height:280px; resize:none; border:none; outline:none; background:transparent; font-size:14px; line-height:1.7; color:var(--text); font-family:inherit; }
+    .editor-body textarea::placeholder { color:var(--text3); }
+
+    #notes-inner { flex:1; display:flex; flex-direction:column; overflow:hidden; min-height:0; }
+    #notes-inner.editing .notes-top,
+    #notes-inner.editing .notes-list { display:none; }
+
+    ::-webkit-scrollbar { width:3px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:var(--bg4); border-radius:3px; }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="logo">🔥</div>
+    <div class="header-text">
+      <h1>Tankfarm Tech Guide</h1>
+      <p>LP &amp; Gas Code Reference</p>
+    </div>
+    <div class="header-right">
+      <div class="offline-pill" id="offline-pill">OFFLINE</div>
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()" aria-label="Toggle theme">🌙</button>
+    </div>
+  </header>
+
+  <nav class="nav">
+    <button class="nav-btn active" data-tab="ask" onclick="switchTab('ask')">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.4-4.4M11 8v6M8 11h6"/></svg>
+      Ask Code
+    </button>
+    <button class="nav-btn" data-tab="pipe" onclick="switchTab('pipe')">
+      <svg viewBox="0 0 24 24"><rect x="2" y="8" width="20" height="8" rx="2"/><path d="M6 8V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2M6 16v2a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-2"/></svg>
+      Pipe Size
+    </button>
+    <button class="nav-btn" data-tab="tank" onclick="switchTab('tank')">
+      <svg viewBox="0 0 24 24"><ellipse cx="12" cy="8" rx="9" ry="4"/><path d="M3 8v8c0 2.2 4 4 9 4s9-1.8 9-4V8"/><path d="M3 12c0 2.2 4 4 9 4s9-1.8 9-4"/></svg>
+      Tank Size
+    </button>
+    <button class="nav-btn" data-tab="conv" onclick="switchTab('conv')">
+      <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"/><path d="m16 8-4 4-4-4M12 12V4"/></svg>
+      Convert
+    </button>
+    <button class="nav-btn" data-tab="notes" onclick="switchTab('notes')">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/></svg>
+      Notes
+    </button>
+  </nav>
+
+  <div class="panels">
+
+    <!-- ═══ ASK PANEL ═══ -->
+    <div class="panel active" id="panel-ask">
+      <div class="book-bar" id="book-bar">
+        <button class="book-chip on"  data-book="ALL">All Codes</button>
+        <button class="book-chip" data-book="NFPA 58">NFPA 58</button>
+        <button class="book-chip" data-book="NFPA 54">NFPA 54</button>
+        <button class="book-chip" data-book="IFGC">IFGC</button>
+        <button class="book-chip" data-book="IMC">IMC</button>
+        <button class="book-chip" data-book="IPC">IPC</button>
+      </div>
+
+      <div class="chat" id="chat">
+        <div class="msg bot">
+          <div class="bot-lbl">Tankfarm AI</div>
+          <div class="bubble">Welcome! Ask me any LP or gas code question. I'll reference the specific section from <strong>NFPA 54, NFPA 58, IFGC, IMC,</strong> or <strong>IPC</strong>. Use the filter above to narrow to one code book.</div>
+        </div>
+      </div>
+
+      <div id="quick-section" class="quick-wrap">
+        <div class="quick-lbl">Common Questions</div>
+        <button class="quick-btn" onclick="ask('What is the minimum LP tank setback distance from a building?')">
+          <span class="q-icon"><svg viewBox="0 0 24 24"><path d="M3 3h18v18H3z"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg></span>
+          LP tank setback distances
+        </button>
+        <button class="quick-btn" onclick="ask('What are the regulator vent requirements for a propane system?')">
+          <span class="q-icon"><svg viewBox="0 0 24 24"><path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 10 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/></svg></span>
+          Regulator vent requirements
+        </button>
+        <button class="quick-btn" onclick="ask('What are the bonding and grounding requirements for LP gas piping?')">
+          <span class="q-icon"><svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>
+          Bonding &amp; grounding rules
+        </button>
+        <button class="quick-btn" onclick="ask('What is the required pressure test for new LP gas piping?')">
+          <span class="q-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span>
+          Pressure test requirements
+        </button>
+      </div>
+
+      <div class="input-bar">
+        <textarea id="txt" placeholder="Ask a code question…" rows="1" onkeydown="onKey(event)" oninput="resizeTxt(this)"></textarea>
+        <button class="send-btn" id="send-btn" onclick="sendMsg()" aria-label="Send">
+          <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══ PIPE PANEL ═══ -->
+    <div class="panel" id="panel-pipe">
+      <div class="scroll">
+        <div class="sec-head">Pipe Sizing Calculator</div>
+        <div class="field"><label>Gas Type</label><div class="sel-wrap"><select id="gas-type"><option value="lp">LP / Propane</option><option value="ng">Natural Gas</option></select></div></div>
+        <div class="field"><label>Pipe Material</label><div class="sel-wrap"><select id="pipe-mat"><option value="steel">Schedule 40 Steel</option><option value="csst">CSST</option><option value="copper">Copper Type L</option><option value="pe">PE/HDPE (Underground)</option></select></div></div>
+        <div class="field"><label>Total Load (BTU/hr)</label><input type="number" id="btu" placeholder="e.g. 150000" inputmode="numeric"/></div>
+        <div class="field"><label>Longest Run (feet)</label><input type="number" id="runft" placeholder="e.g. 50" inputmode="numeric"/></div>
+        <div class="field"><label>Inlet Pressure</label><div class="sel-wrap"><select id="inlet"><option value="low">Low — 7" W.C.</option><option value="med">Medium — 0.5 PSI</option><option value="2psi">2 PSI</option><option value="5psi">5 PSI</option><option value="10psi">10 PSI</option></select></div></div>
+        <button class="action-btn" onclick="calcPipe()">Calculate Pipe Size</button>
+        <div id="pipe-err" class="err-box hidden"></div>
+        <div id="pipe-res" class="hidden"></div>
+        <div class="ref-card">
+          <div class="ref-head">BTU/hr Quick Reference</div>
+          <div class="ref-row"><span>Furnace (avg)</span><span>80,000</span></div>
+          <div class="ref-row"><span>Water Heater</span><span>40,000</span></div>
+          <div class="ref-row"><span>Range / Cooktop</span><span>65,000</span></div>
+          <div class="ref-row"><span>Clothes Dryer</span><span>22,000</span></div>
+          <div class="ref-row"><span>Gas Fireplace</span><span>30,000</span></div>
+          <div class="ref-row"><span>10kW Generator</span><span>130,000</span></div>
+          <div class="ref-row"><span>Pool/Spa Heater</span><span>400,000</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ TANK SIZING PANEL ═══ -->
+    <div class="panel" id="panel-tank">
+      <div class="scroll">
+        <div class="sec-head">LP Tank Sizing Calculator</div>
+
+        <div class="field"><label>Total Connected Load (BTU/hr)</label><input type="number" id="t-btu" placeholder="e.g. 250000" inputmode="numeric"/></div>
+        <div class="field"><label>Climate Zone</label>
+          <div class="sel-wrap"><select id="t-climate">
+            <option value="warm">Warm (min temp above 20°F)</option>
+            <option value="moderate">Moderate (0°F to 20°F)</option>
+            <option value="cold">Cold (-20°F to 0°F)</option>
+            <option value="extreme">Extreme (below -20°F)</option>
+          </select></div>
+        </div>
+        <div class="field"><label>Usage Pattern</label>
+          <div class="sel-wrap"><select id="t-usage">
+            <option value="residential">Residential — Home Heating &amp; Appliances</option>
+            <option value="commercial">Commercial / Light Industrial</option>
+            <option value="standby">Standby / Backup Generator Only</option>
+            <option value="seasonal">Seasonal (not year-round)</option>
+          </select></div>
+        </div>
+        <div class="field"><label>Refill Frequency</label>
+          <div class="sel-wrap"><select id="t-refill">
+            <option value="annual">Once a year or less</option>
+            <option value="semi">Twice a year</option>
+            <option value="quarterly">Every 3 months</option>
+            <option value="monthly">Monthly or more</option>
+          </select></div>
+        </div>
+        <button class="action-btn" onclick="calcTank()">Calculate Tank Size</button>
+        <div id="tank-err" class="err-box hidden"></div>
+        <div id="tank-res" class="hidden"></div>
+
+        <div class="ref-card">
+          <div class="ref-head">Standard LP Tank Sizes</div>
+          <div class="ref-row"><span>120 gallon</span><span>Backup / small home</span></div>
+          <div class="ref-row"><span>250 gallon</span><span>Small home / seasonal</span></div>
+          <div class="ref-row"><span>500 gallon</span><span>Average home — most common</span></div>
+          <div class="ref-row"><span>1,000 gallon</span><span>Large home / light commercial</span></div>
+          <div class="ref-row"><span>1,500+ gallon</span><span>Commercial / agricultural</span></div>
+        </div>
+
+        <div class="ref-card">
+          <div class="ref-head">NFPA 58 Setback Reference</div>
+          <div class="ref-row"><span>Under 125 gal</span><span>10 ft from building</span></div>
+          <div class="ref-row"><span>125–250 gal</span><span>10 ft from building</span></div>
+          <div class="ref-row"><span>251–500 gal</span><span>10 ft from building</span></div>
+          <div class="ref-row"><span>501–2,000 gal</span><span>25 ft from building</span></div>
+          <div class="ref-row"><span>Over 2,000 gal</span><span>50 ft from building</span></div>
+          <div class="ref-row"><span>All sizes</span><span>10 ft from ignition sources</span></div>
+        </div>
+
+        <div class="ref-card">
+          <div class="ref-head">Regulator Sizing Guide</div>
+          <div class="ref-row"><span>Up to 200,000 BTU/hr</span><span>½" regulator</span></div>
+          <div class="ref-row"><span>200k–400k BTU/hr</span><span>¾" regulator</span></div>
+          <div class="ref-row"><span>400k–800k BTU/hr</span><span>1" regulator</span></div>
+          <div class="ref-row"><span>Over 800k BTU/hr</span><span>Consult engineer</span></div>
+          <div class="ref-row"><span>2-stage systems</span><span>First stage: high pressure regulator at tank</span></div>
+          <div class="ref-row"><span>Code reference</span><span>NFPA 58 §5.9 / §6.9</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ CONVERTER PANEL ═══ -->
+    <div class="panel" id="panel-conv">
+      <div class="scroll">
+        <div class="sec-head">Unit Converter</div>
+        <div class="converter-grid">
+
+          <!-- Pressure -->
+          <div class="conv-card">
+            <div class="conv-title">Pressure</div>
+            <div class="conv-row">
+              <input class="conv-input" id="c-psi" type="number" placeholder="0" inputmode="decimal" oninput="convFrom('psi')"/>
+              <span class="conv-lbl">PSI</span>
+            </div>
+            <div class="conv-eq">⇅</div>
+            <div class="conv-row">
+              <input class="conv-input" id="c-wc" type="number" placeholder="0" inputmode="decimal" oninput="convFrom('wc')"/>
+              <span class="conv-lbl">Inches W.C.</span>
+            </div>
+            <div class="conv-eq">⇅</div>
+            <div class="conv-row">
+              <input class="conv-input" id="c-kpa" type="number" placeholder="0" inputmode="decimal" oninput="convFrom('kpa')"/>
+              <span class="conv-lbl">kPa</span>
+            </div>
+            <div class="conv-eq">⇅</div>
+            <div class="conv-row">
+              <input class="conv-input" id="c-mbar" type="number" placeholder="0" inputmode="decimal" oninput="convFrom('mbar')"/>
+              <span class="conv-lbl">mbar</span>
+            </div>
+          </div>
+
+          <!-- Energy / BTU -->
+          <div class="conv-card">
+            <div class="conv-title">Energy &amp; Power</div>
+            <div class="conv-row">
+              <input class="conv-input" id="c-btu" type="number" placeholder="0" inputmode="decimal" oninput="convFrom('btu')"/>
+              <span class="conv-lbl">BTU/hr</span>
+            </div>
+            <div class="conv-eq">⇅</div>
+            <div class="conv-row">
+              <input class="conv-input" id="c-kw" type="number" placeholder="0" inputmode="decimal" oninput="convFrom('kw')"/>
+              <span class="conv-lbl">kW</span>
+            </div>
+            <div class="conv-eq">⇅</div>
+            <div class="conv-row">
+              <input class="conv-input" id="c-mbh" type="number" placeholder="0" inputmode="decimal" oninput="convFrom('mbh')"/>
+              <span class="conv-lbl">MBH</span>
+            </div>
+          </div>
+
+          <!-- Temperature -->
+          <div class="conv-card">
+            <div class="conv-title">Temperature</div>
+            <div class="conv-row">
+              <input class="conv-input" id="c-f" type="number" placeholder="0" inputmode="decimal" oninput="convFrom('f')"/>
+              <span class="conv-lbl">°F</span>
+            </div>
+            <div class="conv-eq">⇅</div>
+            <div class="conv-row">
+              <input class="conv-input" id="c-c" type="number" placeholder="0" inputmode="decimal" oninput="convFrom('c')"/>
+              <span class="conv-lbl">°C</span>
+            </div>
+          </div>
+
+          <!-- Volume / Flow -->
+          <div class="conv-card">
+            <div class="conv-title">Gas Flow</div>
+            <div class="conv-row">
+              <input class="conv-input" id="c-cfh" type="number" placeholder="0" inputmode="decimal" oninput="convFrom('cfh')"/>
+              <span class="conv-lbl">CFH (LP)</span>
+            </div>
+            <div class="conv-eq">⇅</div>
+            <div class="conv-row">
+              <input class="conv-input" id="c-btulp" type="number" placeholder="0" inputmode="decimal" oninput="convFrom('btulp')"/>
+              <span class="conv-lbl">BTU/hr LP</span>
+            </div>
+            <div class="conv-eq">⇅</div>
+            <div class="conv-row">
+              <input class="conv-input" id="c-cfhng" type="number" placeholder="0" inputmode="decimal" oninput="convFrom('cfhng')"/>
+              <span class="conv-lbl">CFH (NG)</span>
+            </div>
+            <div class="conv-eq">⇅</div>
+            <div class="conv-row">
+              <input class="conv-input" id="c-btung" type="number" placeholder="0" inputmode="decimal" oninput="convFrom('btung')"/>
+              <span class="conv-lbl">BTU/hr NG</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ NOTES PANEL ═══ -->
+    <div class="panel" id="panel-notes">
+      <div id="notes-inner">
+        <div class="notes-top">
+          <input class="search-box" id="note-search" type="text" placeholder="Search notes…" oninput="renderNotes()"/>
+          <button class="new-btn" onclick="newNote()">+ New</button>
+        </div>
+        <div class="notes-list" id="notes-list"></div>
+        <div class="editor" id="editor">
+          <div class="editor-bar">
+            <button class="back-btn" onclick="closeEditor()">← Back</button>
+            <input class="editor-title" id="ed-title" type="text" placeholder="Note title…"/>
+          </div>
+          <div class="editor-meta">
+            <select class="tag-sel" id="ed-tag">
+              <option value="">No tag</option>
+              <option value="NFPA 58">NFPA 58</option>
+              <option value="NFPA 54">NFPA 54</option>
+              <option value="IFGC">IFGC</option>
+              <option value="IMC">IMC</option>
+              <option value="IPC">IPC</option>
+              <option value="Job Site">Job Site</option>
+              <option value="Customer">Customer</option>
+              <option value="Install">Install</option>
+            </select>
+            <button class="del-btn" id="del-btn" onclick="delNote()">Delete</button>
+            <button class="save-btn" onclick="saveNote()">Save</button>
+          </div>
+          <div class="editor-body">
+            <textarea id="ed-body" placeholder="Write your note…&#10;&#10;Job site observations, code summaries, customer info, install notes."></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <script src="js/app.js"></script>
+</body>
+</html>
